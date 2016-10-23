@@ -9,6 +9,9 @@ import termios
 import struct
 import fcntl
 import signal
+import time
+from pexpect import pxssh
+import getpass
 #-------------参数区---------------------
 home=os.environ['HOME']
 config_file=os.path.join(home,'.serve')
@@ -21,7 +24,13 @@ selected=False
 new_serve=False
 file_exist=False
 ssh=None
+old_time=time.time()
 #-------------函数区---------------------
+def print_usetime():
+    global old_time
+    now_time=time.time()
+    print int(now_time)-int(old_time)
+    old_time=now_time
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -83,10 +92,47 @@ def ssh_cmd(port,addr, passwd,cmd):
         ssh.close()
         ret = -2
     return ret
+def pxssh_cmd(addr,port,passwd,cmd):
+    try:
+        # 调用构造函数，创建一个 pxssh 类的对象:
+        s = pxssh.pxssh()
+        # 获得用户指定 ssh 主机域名.
+        hostname = addr.split['@'][-1]
+        # 获得用户指定 ssh 主机用户名.
+        username = addr.split['@'][0]
+        # 获得用户指定 ssh 主机密码.
+        # password = getpass.getpass('password: ')
+        # 利用 pxssh 类的 login 方法进行 ssh 登录，原始 prompt 为'$' , '#'或'>'
+        s.login (hostname, username, passwd, original_prompt='[$#>]')
+        # 发送命令 'uptime'
+        s.sendline ('uptime')
+        # 匹配 prompt
+        s.prompt()
+        # 将 prompt 前所有内容打印出，即命令 'uptime' 的执行结果.
+        print s.before
+        # 发送命令 ' ls -l '
+        s.sendline (cmd )
+        # 匹配 prompt
+        s.prompt()
+        # 将 prompt 前所有内容打印出，即命令 ' ls -l ' 的执行结果.
+        ret=s.before
+        # 退出 ssh session
+        s.logout()
+        return ret
+    except pxssh.ExceptionPxssh, e:
+        print "pxssh failed on login."
+        print str(e)
+
 def outputResult(port, addr, passwd,cmd):
+    print_usetime()
     child=ssh_cmd(port, addr, passwd,cmd)
-    child.expect(pexpect.EOF)
-    return child.before
+    print child
+    print_usetime()
+    if type(child)==type(0):
+        return "ERROR"
+    else:
+        child.expect(pexpect.EOF)
+        return child.before
 #-------------流程区---------------------
 def main():
     port=22

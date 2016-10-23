@@ -10,6 +10,7 @@ import sshUtil
 import shutil
 import commands
 import getpass
+import pxsshUtil
 
 # import wx.lib.buttons as buttons
 
@@ -21,6 +22,7 @@ passwd_hint_str='密码: '
 default_addr='%s@localhost' % getpass.getuser()
 default_port='22'
 default_passwd='passwd'
+old_time=time.time()
 # file_path_abs='~'
 space=10
 win_size_x=wx.DisplaySize()[0]/2
@@ -47,7 +49,7 @@ class OpenSSHClient(wx.Frame):
         self.passwd_text=wx.TextCtrl(panel,-1,default_passwd,size=(80,-1))
         #主体元素
         self.filelistbox = wx.ListBox(panel, 60,(-1,-1),(file_list_weight,file_list_height), d, wx.LB_SINGLE)
-        self.Bind(wx.EVT_LISTBOX, self.EvtListBox, self.filelistbox)
+        self.Bind(wx.EVT_LISTBOX_DCLICK, self.EvtListBox, self.filelistbox)
         self.filedetail = wx.StaticText(panel,-1,size=(file_list_weight*4,file_list_height))
         #开始布局.
         # mainSizer is the top-level one that manages everything mainSizer是最水平的布局器
@@ -126,7 +128,7 @@ class OpenSSHClient(wx.Frame):
         # mainSizer.SetSizeHints(self)
         # self.Bind(wx.EVT_CLOSE, self.closewindow)
         # self.Bind(wx.wx.EVT_QUERY_END_SESSION, wx.CloseEvent)
-        print time.time()
+        # self.print_usetime()
         self.InitSSHFileList()
     def EvtListBox(self, event):
         lb = event.GetEventObject()
@@ -144,12 +146,18 @@ class OpenSSHClient(wx.Frame):
         addr=self.addr_text.GetLineText(0)
         port=self.port_text.GetLineText(0)
         passwd=self.passwd_text.GetLineText(0)
-        cmd='ls -al %s' % path
-        ret=sshUtil.outputResult(port, addr, passwd, cmd)
+        cmd='\ls -al %s' % path
+        # ret=sshUtil.outputResult(port, addr, passwd, cmd)
+        ret=pxsshUtil.pxssh_cmd(addr, port, passwd, cmd)
         filelist=ret.strip().split(os.linesep)
-        print ret
+
+
         del filelist[0]#删掉总结的字符串 例如"total 160"
         del filelist[0]#删掉第一排的字符串 例如"."
+        del filelist[0]
+        print filelist
+        # sys.exit(-1)
+        # print "3========="
         self.filelistbox.Clear()
         # self.filelistbox.Append("..")
         for i in range(0,len(filelist)):
@@ -173,6 +181,12 @@ class OpenSSHClient(wx.Frame):
             self.filelistbox.Append(file_name)
             self.filelistbox.SetClientData(i, filedetail);
         self.filelistbox.SetSelection(0)
+        self.print_usetime()
+    def print_usetime(self):
+        global old_time
+        now_time=time.time()
+        print int(now_time)-int(old_time)
+        old_time=now_time
 frame =OpenSSHClient()
 frame.Show()
 app.MainLoop()
